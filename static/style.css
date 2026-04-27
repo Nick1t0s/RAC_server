@@ -1,0 +1,51 @@
+/* Auxiliary styles on top of Tailwind */
+html, body { height: 100%; }
+main { min-height: 0; }
+#commands-list { min-height: 0; }
+#files-list, #uploads-list { min-height: 0; }
+
+pre.cmd-output {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  background: #f8fafc;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-top: 4px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.cmd-card { padding: 8px 10px; border-radius: 6px; }
+.cmd-pending { background: #f1f5f9; }
+.cmd-progress { background: #dbeafe; position: relative; }
+.cmd-progress::after {
+  content: '';
+  display: inline-block;
+  margin-left: 6px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #3b82f6;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+.cmd-done { background: #fff; border-left: 3px solid #22c55e; }
+.cmd-error { background: #fff; border-left: 3px solid #ef4444; }
+.cmd-error pre.cmd-output { background: #fef2f2; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Mobile pane visibility */
+@media (max-width: 639px) {
+  body[data-tab="console"] #pane-console { display: flex; }
+  body[data-tab="console"] #pane-right   { display: none !important; }
+  body[data-tab="files"]   #pane-console { display: none; }
+  body[data-tab="files"]   #pane-right   { display: flex !important; }
+  body[data-tab="files"]   #pane-uploads { display: none; }
+  body[data-tab="uploads"] #pane-console { display: none; }
+  body[data-tab="uploads"] #pane-right   { display: flex !important; }
+  body[data-tab="uploads"] #pane-files   { display: none; }
+}

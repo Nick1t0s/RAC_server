@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}RAC Server{% endblock %}
+{% block body %}
+<div class="min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 px-3 sm:px-4 py-2 flex items-center gap-2 sm:gap-4 sticky top-0 z-30">
+    <div class="flex items-center gap-2 flex-1 min-w-0">
+      <select id="device-select"
+              class="rounded border border-slate-300 px-2 py-1 text-sm bg-white max-w-full truncate">
+        <option value="">— устройство —</option>
+      </select>
+      <span id="device-status" class="hidden sm:inline-flex items-center text-xs text-slate-500"></span>
+    </div>
+    <div class="hidden sm:flex items-center gap-3 text-sm text-slate-600">
+      <span>{{ user }}</span>
+      <form method="post" action="/logout" class="inline">
+        <button type="submit" class="text-indigo-600 hover:underline">Выйти</button>
+      </form>
+    </div>
+    <button id="menu-toggle" class="sm:hidden p-1.5 rounded hover:bg-slate-100" aria-label="Меню">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+  </header>
+
+  <!-- Mobile menu -->
+  <div id="mobile-menu" class="hidden sm:hidden bg-white border-b border-slate-200 px-4 py-2 text-sm">
+    <div class="flex items-center justify-between">
+      <span>{{ user }}</span>
+      <form method="post" action="/logout">
+        <button type="submit" class="text-indigo-600">Выйти</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Mobile tabs -->
+  <nav class="sm:hidden bg-white border-b border-slate-200 flex text-sm">
+    <button data-tab="console" class="tab-btn flex-1 py-2 text-center border-b-2 border-indigo-500 text-indigo-700">Консоль</button>
+    <button data-tab="files"   class="tab-btn flex-1 py-2 text-center border-b-2 border-transparent">Файлы</button>
+    <button data-tab="uploads" class="tab-btn flex-1 py-2 text-center border-b-2 border-transparent">Загрузки</button>
+  </nav>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 hidden max-w-md px-4 py-2 rounded shadow text-sm"></div>
+
+  <!-- Main -->
+  <main class="flex-1 grid grid-cols-1 sm:grid-cols-[1fr_320px] lg:grid-cols-[1fr_360px] gap-0 sm:gap-3 p-0 sm:p-3 overflow-hidden">
+
+    <!-- Console pane -->
+    <section id="pane-console" class="flex flex-col bg-white sm:rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+      <div class="px-3 py-2 border-b border-slate-200 text-sm font-medium text-slate-600">Консоль</div>
+      <div id="commands-list" class="flex-1 overflow-y-auto p-2 space-y-2 text-sm"></div>
+      <form id="cmd-form" class="border-t border-slate-200 bg-slate-50 p-2 sm:p-3 space-y-2 sticky bottom-0">
+        <div class="flex gap-2">
+          <input id="cmd-name" type="text" placeholder="Имя команды" maxlength="64" required
+                 class="flex-1 rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+          <select id="cmd-upload" class="rounded border border-slate-300 px-2 py-1.5 text-sm bg-white max-w-[40%]">
+            <option value="">— без файла —</option>
+          </select>
+        </div>
+        <textarea id="cmd-payload" rows="2" placeholder="Payload (опционально)"
+                  class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"></textarea>
+        <div class="flex justify-end">
+          <button type="submit"
+                  class="bg-indigo-600 hover:bg-indigo-700 text-white rounded px-4 py-1.5 text-sm font-medium">
+            Отправить
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Right pane: files + uploads -->
+    <aside id="pane-right" class="hidden sm:flex flex-col gap-3 overflow-hidden">
+
+      <section id="pane-files" class="flex flex-col bg-white sm:rounded-lg shadow-sm border border-slate-200 overflow-hidden flex-1">
+        <div class="px-3 py-2 border-b border-slate-200 text-sm font-medium text-slate-600 flex items-center justify-between">
+          <span>Проводник /cmds</span>
+          <button id="files-refresh" class="text-xs text-indigo-600 hover:underline">↻</button>
+        </div>
+        <div id="files-breadcrumbs" class="px-3 py-1 text-xs text-slate-500 border-b border-slate-100"></div>
+        <div id="files-list" class="flex-1 overflow-y-auto p-2 space-y-1 text-sm"></div>
+      </section>
+
+      <section id="pane-uploads" class="flex flex-col bg-white sm:rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-3 py-2 border-b border-slate-200 text-sm font-medium text-slate-600 flex items-center justify-between">
+          <span>Загрузки</span>
+          <label class="text-xs text-indigo-600 hover:underline cursor-pointer">
+            + Загрузить
+            <input id="upload-input" type="file" class="hidden">
+          </label>
+        </div>
+        <div id="uploads-progress" class="px-3 py-1 text-xs text-slate-500 hidden"></div>
+        <div id="uploads-list" class="overflow-y-auto p-2 space-y-1 text-sm max-h-64 sm:max-h-96"></div>
+      </section>
+
+    </aside>
+
+  </main>
+</div>
+
+<script>
+  window.__APP__ = { initialDeviceId: new URL(location.href).searchParams.get('device_id') };
+</script>
+<script src="/static/app.js"></script>
+{% endblock %}
