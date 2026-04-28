@@ -1,2 +1,4 @@
 requests>=2.31
 mss>=9.0
+opencv-python>=4.8
+pyautogui>=0.9.54

