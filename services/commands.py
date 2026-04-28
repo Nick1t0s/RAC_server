@@ -67,6 +67,17 @@ def create_command(
     name = (name or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
+
+    # Имена команд всегда без пробелов: если пользователь ввёл строку вида
+    # "exec ping 8.8.8.8", первый токен — имя, остаток уходит в payload
+    # (перед уже существующим payload, если тот непустой).
+    parts = name.split(None, 1)
+    if len(parts) > 1:
+        name = parts[0]
+        rest = parts[1].strip()
+        existing = (payload or "").strip()
+        payload = rest if not existing else f"{rest}\n{existing}"
+
     if len(name) > 64:
         raise HTTPException(status_code=400, detail="name too long (max 64)")
 
