@@ -165,17 +165,15 @@
     ev.preventDefault();
     if (!state.deviceId) { toast('Выберите устройство', 'error'); return; }
     const name = $('#cmd-name').value.trim();
-    const payload = $('#cmd-payload').value;
     const uploadId = $('#cmd-upload').value;
-    if (!name) { toast('Введите имя команды', 'error'); return; }
+    if (!name) { toast('Введите команду', 'error'); return; }
 
-    const body = { device_id: Number(state.deviceId), name, payload };
+    const body = { device_id: Number(state.deviceId), name };
     if (uploadId) body.upload_id = Number(uploadId);
 
     try {
       await api('/api/web/commands', { method: 'POST', json: body });
       $('#cmd-name').value = '';
-      $('#cmd-payload').value = '';
       $('#cmd-upload').value = '';
       await loadCommands();
     } catch (e) {
