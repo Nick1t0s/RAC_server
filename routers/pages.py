@@ -28,8 +28,9 @@ async def login_form(request: Request, error: Optional[str] = None):
     if current_user(request):
         return RedirectResponse(url="/", status_code=302)
     return templates.TemplateResponse(
+        request,
         "login.html",
-        {"request": request, "error": error},
+        {"error": error},
     )
 
 
@@ -45,8 +46,9 @@ async def login_submit(
     if not ok:
         log.warning("login failed: user=%s ip=%s", username, ip)
         return templates.TemplateResponse(
+            request,
             "login.html",
-            {"request": request, "error": "Неверный логин или пароль"},
+            {"error": "Неверный логин или пароль"},
             status_code=401,
         )
     login_session(request, username)
@@ -66,6 +68,7 @@ async def index(request: Request):
     if not user:
         return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse(
+        request,
         "index.html",
-        {"request": request, "user": user},
+        {"user": user},
     )
