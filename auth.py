@@ -6,8 +6,8 @@ import secrets
 from datetime import datetime
 from typing import Optional
 
+import bcrypt
 from fastapi import Depends, HTTPException, Request, status
-from passlib.hash import bcrypt
 
 import db
 from config import Config
@@ -33,7 +33,7 @@ def _cfg() -> Config:
 
 def verify_password(plain: str, hashed: str) -> bool:
     try:
-        return bcrypt.verify(plain, hashed)
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
     except Exception:
         return False
 

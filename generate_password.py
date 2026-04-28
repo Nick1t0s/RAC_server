@@ -12,7 +12,7 @@ import getpass
 import secrets
 import sys
 
-from passlib.hash import bcrypt
+import bcrypt
 
 
 def main() -> int:
@@ -28,7 +28,11 @@ def main() -> int:
         print("ERROR: passwords do not match", file=sys.stderr)
         return 1
 
-    pw_hash = bcrypt.hash(pw1)
+    pw_bytes = pw1.encode("utf-8")
+    if len(pw_bytes) > 72:
+        print("ERROR: password is longer than 72 bytes (bcrypt limit)", file=sys.stderr)
+        return 1
+    pw_hash = bcrypt.hashpw(pw_bytes, bcrypt.gensalt()).decode("ascii")
     sess_secret = secrets.token_urlsafe(48)
 
     print()
