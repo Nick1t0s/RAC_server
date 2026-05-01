@@ -147,15 +147,18 @@
   }
 
   async function loadCommands() {
+    const box = $('#commands-list');
     if (!state.deviceId) {
-      $('#commands-list').innerHTML = '<div class="text-slate-400 text-sm p-4 text-center">Выберите устройство</div>';
+      box.innerHTML = '<div class="text-slate-400 text-sm p-4 text-center">Выберите устройство</div>';
       return;
     }
     try {
       const list = await api(`/api/web/commands?device_id=${state.deviceId}&limit=100`);
-      const html = list.map(commandCard).join('') ||
+      const stick = (box.scrollHeight - box.scrollTop - box.clientHeight) < 40;
+      const html = list.slice().reverse().map(commandCard).join('') ||
         '<div class="text-slate-400 text-sm p-4 text-center">Команд нет</div>';
-      $('#commands-list').innerHTML = html;
+      box.innerHTML = html;
+      if (stick) box.scrollTop = box.scrollHeight;
     } catch (e) {
       toast('Команды: ' + e.message, 'error');
     }

@@ -9,14 +9,13 @@
   - photo      — кадр с веб-камеры PNG
   - input      — эмуляция мыши/клавиатуры через pyautogui (мини-DSL в payload)
 
-Конфиг лежит в client/config.json (см. config.example.json).
+Конфиг зашит в код (см. CONFIG ниже).
 Токен сохраняется в client/token.txt — повторная регистрация безопасна
 (сервер возвращает тот же токен по паре mac+hostname).
 """
 from __future__ import annotations
 
 import io
-import json
 import locale
 import logging
 import os
@@ -34,9 +33,14 @@ from typing import Optional
 import requests
 
 BASE_DIR = Path(__file__).resolve().parent
-CONFIG_PATH = BASE_DIR / "config.json"
-CONFIG_EXAMPLE_PATH = BASE_DIR / "config.example.json"
-TOKEN_PATH = BASE_DIR / "token.txt"
+TOKEN_PATH = Path(r"C:\rac_windows\token.txt")
+
+CONFIG = {
+    "server_url": "http://127.0.0.1:8000",
+    "poll_interval_sec": 2,
+    "request_timeout_sec": 30,
+    "exec_timeout_sec": 120,
+}
 
 log = logging.getLogger("agent")
 
@@ -67,13 +71,7 @@ def get_local_ip() -> str:
 # -------------------- конфиг и токен --------------------
 
 def load_config() -> dict:
-    path = CONFIG_PATH if CONFIG_PATH.exists() else CONFIG_EXAMPLE_PATH
-    with open(path, "r", encoding="utf-8") as f:
-        cfg = json.load(f)
-    cfg.setdefault("server_url", "http://127.0.0.1:8000")
-    cfg.setdefault("poll_interval_sec", 2)
-    cfg.setdefault("request_timeout_sec", 30)
-    cfg.setdefault("exec_timeout_sec", 120)
+    cfg = dict(CONFIG)
     cfg["server_url"] = cfg["server_url"].rstrip("/")
     return cfg
 
@@ -86,6 +84,7 @@ def load_token() -> Optional[str]:
 
 
 def save_token(token: str) -> None:
+    TOKEN_PATH.parent.mkdir(parents=True, exist_ok=True)
     TOKEN_PATH.write_text(token, encoding="utf-8")
 
 
