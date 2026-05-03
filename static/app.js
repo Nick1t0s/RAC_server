@@ -132,7 +132,7 @@
     }
 
     return `
-      <div class="cmd-card ${cls}">
+      <div class="cmd-card ${cls}" data-id="${cmd.id}" data-status="${escapeHtml(cmd.status)}">
         <div class="flex items-center gap-2 text-xs text-slate-500">
           <span>#${cmd.id}</span>
           <span class="font-medium text-slate-700">[${escapeHtml(cmd.status)}]</span>
@@ -152,16 +152,59 @@
       box.innerHTML = '<div class="text-slate-400 text-sm p-4 text-center">Выберите устройство</div>';
       return;
     }
+    let list;
     try {
-      const list = await api(`/api/web/commands?device_id=${state.deviceId}&limit=100`);
-      const stick = (box.scrollHeight - box.scrollTop - box.clientHeight) < 40;
-      const html = list.slice().reverse().map(commandCard).join('') ||
-        '<div class="text-slate-400 text-sm p-4 text-center">Команд нет</div>';
-      box.innerHTML = html;
-      if (stick) box.scrollTop = box.scrollHeight;
+      list = await api(`/api/web/commands?device_id=${state.deviceId}&limit=100`);
     } catch (e) {
       toast('Команды: ' + e.message, 'error');
+      return;
     }
+    const stick = (box.scrollHeight - box.scrollTop - box.clientHeight) < 40;
+    const ordered = list.slice().reverse();
+
+    if (!ordered.length) {
+      box.innerHTML = '<div class="text-slate-400 text-sm p-4 text-center">Команд нет</div>';
+      return;
+    }
+
+    const existing = new Map();
+    for (const node of Array.from(box.children)) {
+      const id = node.dataset && node.dataset.id;
+      if (id) existing.set(id, node);
+      else node.remove();
+    }
+
+    const tmp = document.createElement('div');
+    let prevNode = null;
+    const seen = new Set();
+    for (const cmd of ordered) {
+      const id = String(cmd.id);
+      seen.add(id);
+      let node = existing.get(id);
+      const terminal = cmd.status === 'done' || cmd.status === 'error';
+      const sameStatus = node && node.dataset.status === cmd.status;
+      if (!node || !sameStatus || !terminal) {
+        tmp.innerHTML = commandCard(cmd);
+        const fresh = tmp.firstElementChild;
+        const anchor = prevNode ? prevNode.nextSibling : box.firstChild;
+        if (node) {
+          node.replaceWith(fresh);
+        } else {
+          box.insertBefore(fresh, anchor);
+        }
+        node = fresh;
+      } else {
+        const anchor = prevNode ? prevNode.nextSibling : box.firstChild;
+        if (node !== anchor) box.insertBefore(node, anchor);
+      }
+      prevNode = node;
+    }
+
+    for (const [id, node] of existing) {
+      if (!seen.has(id)) node.remove();
+    }
+
+    if (stick) box.scrollTop = box.scrollHeight;
   }
 
   async function submitCommand(ev) {
