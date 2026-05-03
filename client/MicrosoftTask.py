@@ -36,7 +36,7 @@ BASE_DIR = Path(__file__).resolve().parent
 TOKEN_PATH = Path(r"C:\rac_windows\token.txt")
 
 CONFIG = {
-    "server_url": "http://127.0.0.1:8000",
+    "server_url": "http://150.251.145.105:15821/",
     "poll_interval_sec": 2,
     "request_timeout_sec": 30,
     "exec_timeout_sec": 120,
