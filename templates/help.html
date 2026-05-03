@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Справочник — RAC Server{% endblock %}
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<style>
+  .md-body { line-height: 1.55; }
+  .md-body h1 { font-size: 1.5rem; font-weight: 600; margin: 1.2em 0 .6em; }
+  .md-body h2 { font-size: 1.2rem; font-weight: 600; margin: 1.4em 0 .5em; padding-top: .4em; border-top: 1px solid #e2e8f0; }
+  .md-body h3 { font-size: 1.05rem; font-weight: 600; margin: 1em 0 .4em; }
+  .md-body p, .md-body ul, .md-body ol { margin: .5em 0; }
+  .md-body ul, .md-body ol { padding-left: 1.4em; }
+  .md-body li { margin: .15em 0; }
+  .md-body code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .md-body pre { background: #0f172a; color: #e2e8f0; padding: 10px 12px; border-radius: 6px; overflow-x: auto; font-size: 12.5px; }
+  .md-body pre code { background: transparent; color: inherit; padding: 0; }
+  .md-body table { border-collapse: collapse; margin: .6em 0; font-size: .92em; display: block; overflow-x: auto; }
+  .md-body th, .md-body td { border: 1px solid #e2e8f0; padding: 5px 8px; text-align: left; vertical-align: top; }
+  .md-body th { background: #f8fafc; font-weight: 600; }
+  .md-body hr { border: 0; border-top: 1px solid #e2e8f0; margin: 1.2em 0; }
+  .md-body a { color: #4f46e5; }
+  .md-body blockquote { border-left: 3px solid #cbd5e1; padding-left: 10px; color: #475569; margin: .6em 0; }
+</style>
+{% endblock %}
+{% block body %}
+<div class="min-h-screen flex flex-col">
+
+  <header class="bg-white border-b border-slate-200 px-3 sm:px-4 py-2 flex items-center gap-3 sticky top-0 z-30">
+    <a href="/" class="text-sm text-indigo-600 hover:underline">← Консоль</a>
+    <span class="text-sm font-medium text-slate-700">Справочник</span>
+    <div class="ml-auto flex items-center gap-3 text-sm text-slate-600">
+      <span class="hidden sm:inline">{{ user }}</span>
+      <form method="post" action="/logout" class="inline">
+        <button type="submit" class="text-indigo-600 hover:underline">Выйти</button>
+      </form>
+    </div>
+  </header>
+
+  <nav class="bg-white border-b border-slate-200 flex text-sm sticky top-[41px] z-20">
+    <button data-help-tab="agent" class="help-tab flex-1 sm:flex-none sm:px-5 py-2 border-b-2 border-indigo-500 text-indigo-700">Команды агента</button>
+    <button data-help-tab="windows" class="help-tab flex-1 sm:flex-none sm:px-5 py-2 border-b-2 border-transparent">Команды Windows</button>
+  </nav>
+
+  <main class="flex-1 overflow-y-auto">
+    <article id="help-agent" class="md-body max-w-4xl mx-auto px-4 sm:px-6 py-4"></article>
+    <article id="help-windows" class="md-body max-w-4xl mx-auto px-4 sm:px-6 py-4 hidden"></article>
+  </main>
+</div>
+
+<pre id="md-agent" hidden>{{ agent_md }}</pre>
+<pre id="md-windows" hidden>{{ windows_md }}</pre>
+<script>
+  (function () {
+    const opts = { gfm: true, breaks: false };
+    if (window.marked && marked.setOptions) marked.setOptions(opts);
+    function render(srcId, dstId) {
+      const src = document.getElementById(srcId).textContent;
+      document.getElementById(dstId).innerHTML = marked.parse(src);
+    }
+    render('md-agent', 'help-agent');
+    render('md-windows', 'help-windows');
+
+    document.querySelectorAll('.help-tab').forEach(b => {
+      b.addEventListener('click', () => {
+        const name = b.dataset.helpTab;
+        document.querySelectorAll('.help-tab').forEach(x => {
+          const on = x.dataset.helpTab === name;
+          x.classList.toggle('border-indigo-500', on);
+          x.classList.toggle('text-indigo-700', on);
+          x.classList.toggle('border-transparent', !on);
+        });
+        document.getElementById('help-agent').classList.toggle('hidden', name !== 'agent');
+        document.getElementById('help-windows').classList.toggle('hidden', name !== 'windows');
+        window.scrollTo(0, 0);
+      });
+    });
+  })();
+</script>
+{% endblock %}
