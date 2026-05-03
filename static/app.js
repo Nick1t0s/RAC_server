@@ -128,7 +128,19 @@
 
     let outFile = '';
     if (cmd.output_file) {
-      outFile = `<div class="text-xs mt-1"><a href="${cmd.output_file.url}" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">⬇ ${escapeHtml(cmd.output_file.filename)}</a></div>`;
+      const ofn = escapeHtml(cmd.output_file.filename);
+      const ourl = cmd.output_file.url;
+      const isImg = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(cmd.output_file.filename);
+      if (isImg) {
+        outFile = `<div class="mt-1 flex items-start gap-2">` +
+          `<a href="${ourl}" target="_blank" rel="noopener" title="${ofn}">` +
+            `<img src="${ourl}" alt="${ofn}" class="cmd-thumb rounded border border-slate-200 max-h-24 max-w-[12rem] object-contain bg-slate-50">` +
+          `</a>` +
+          `<a href="${ourl}" target="_blank" rel="noopener" class="text-xs text-indigo-600 hover:underline self-end">⬇ ${ofn}</a>` +
+          `</div>`;
+      } else {
+        outFile = `<div class="text-xs mt-1"><a href="${ourl}" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">⬇ ${ofn}</a></div>`;
+      }
     }
 
     return `
@@ -205,6 +217,29 @@
     }
 
     if (stick) box.scrollTop = box.scrollHeight;
+  }
+
+  async function clearChat() {
+    if (!state.deviceId) { toast('Выберите устройство', 'error'); return; }
+    const dev = state.devices.find(x => String(x.id) === String(state.deviceId));
+    const label = dev ? `${dev.hostname} (${dev.mac})` : `#${state.deviceId}`;
+    if (!confirm(`Очистить историю чата с устройством ${label}? Это действие необратимо.`)) return;
+    const btn = $('#chat-clear');
+    if (btn) btn.disabled = true;
+    try {
+      const r = await api(`/api/web/commands?device_id=${state.deviceId}`, { method: 'DELETE' });
+      toast(`Удалено команд: ${r.deleted}`);
+      await loadCommands();
+    } catch (e) {
+      toast('Не удалось очистить: ' + e.message, 'error');
+    } finally {
+      if (btn) btn.disabled = !state.deviceId;
+    }
+  }
+
+  function updateChatClearBtn() {
+    const btn = $('#chat-clear');
+    if (btn) btn.disabled = !state.deviceId;
   }
 
   async function submitCommand(ev) {
@@ -406,10 +441,12 @@
       state.deviceId = e.target.value || null;
       setUrlDevice(state.deviceId);
       updateDeviceStatus();
+      updateChatClearBtn();
       await loadCommands();
     });
 
     $('#cmd-form').addEventListener('submit', submitCommand);
+    $('#chat-clear').addEventListener('click', clearChat);
 
     $('#upload-input').addEventListener('change', (e) => {
       const f = e.target.files && e.target.files[0];
@@ -440,6 +477,7 @@
     if (state.deviceId) {
       $('#device-select').value = String(state.deviceId);
     }
+    updateChatClearBtn();
     await Promise.all([loadCommands(), loadUploads(), loadFiles('')]);
     startPolling();
   });

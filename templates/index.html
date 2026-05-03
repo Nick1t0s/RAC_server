@@ -54,7 +54,12 @@
 
     <!-- Console pane -->
     <section id="pane-console" class="flex flex-col bg-white sm:rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-      <div class="px-3 py-2 border-b border-slate-200 text-sm font-medium text-slate-600">Консоль</div>
+      <div class="px-3 py-2 border-b border-slate-200 text-sm font-medium text-slate-600 flex items-center justify-between">
+        <span>Консоль</span>
+        <button id="chat-clear" type="button"
+                class="text-xs text-rose-600 hover:underline disabled:text-slate-400 disabled:no-underline"
+                disabled>Очистить чат</button>
+      </div>
       <div id="commands-list" class="flex-1 overflow-y-auto p-2 space-y-2 text-sm"></div>
       <form id="cmd-form" class="border-t border-slate-200 bg-slate-50 p-2 sm:p-3 space-y-2 sticky bottom-0">
         <input id="cmd-name" type="text" placeholder="Команда (например: exec ping 8.8.8.8)" maxlength="2048" required

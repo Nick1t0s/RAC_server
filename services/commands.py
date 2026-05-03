@@ -138,6 +138,21 @@ def complete_command(
         )
 
 
+def clear_device_commands(device_id: int) -> dict:
+    """Удалить все команды устройства. Возвращает счётчик и список output-файлов."""
+    with db.transaction("IMMEDIATE") as c:
+        if not c.execute("SELECT 1 FROM devices WHERE id = ?", (device_id,)).fetchone():
+            raise HTTPException(status_code=404, detail="device not found")
+        rows = c.execute(
+            "SELECT output_file_path FROM commands WHERE device_id = ? AND output_file_path IS NOT NULL AND output_file_path != ''",
+            (device_id,),
+        ).fetchall()
+        output_files = [r["output_file_path"] for r in rows]
+        cur = c.execute("DELETE FROM commands WHERE device_id = ?", (device_id,))
+        deleted = cur.rowcount or 0
+    return {"deleted": deleted, "output_files": output_files}
+
+
 def commands_referencing_upload(stored_path: str) -> list[int]:
     with db.get_conn() as c:
         rows = c.execute(

@@ -113,6 +113,27 @@ class CreateCommandReq(BaseModel):
     upload_id: Optional[int] = Field(None)
 
 
+@router.delete("/commands")
+async def clear_commands(device_id: int = Query(..., ge=1)):
+    cfg = _cfg()
+    res = cmd_svc.clear_device_commands(device_id)
+    base = cfg.storage.cmds_dir.resolve()
+    removed_files = 0
+    for rel in res["output_files"]:
+        try:
+            target = (cfg.storage.cmds_dir / rel).resolve()
+            target.relative_to(base)
+        except ValueError:
+            continue
+        try:
+            if target.exists() and target.is_file():
+                target.unlink()
+                removed_files += 1
+        except OSError as e:
+            log.warning("failed to remove output file %s: %s", target, e)
+    return {"ok": True, "deleted": res["deleted"], "removed_files": removed_files}
+
+
 @router.post("/commands")
 async def create_command(req: CreateCommandReq):
     row = cmd_svc.create_command(
