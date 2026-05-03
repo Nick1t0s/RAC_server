@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Form, Request
@@ -72,3 +73,24 @@ async def index(request: Request):
         "index.html",
         {"user": user},
     )
+
+
+_HELP_DOCS = {
+    "agent_md": Path("client/commands.md"),
+    "windows_md": Path("client/windows_cmd.md"),
+}
+
+
+@router.get("/help", response_class=HTMLResponse)
+async def help_page(request: Request):
+    user = current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    ctx = {"user": user}
+    for key, path in _HELP_DOCS.items():
+        try:
+            ctx[key] = path.read_text(encoding="utf-8")
+        except OSError as e:
+            log.warning("help: cannot read %s: %s", path, e)
+            ctx[key] = f"# Файл недоступен\n\n`{path}`: {e}"
+    return templates.TemplateResponse(request, "help.html", ctx)

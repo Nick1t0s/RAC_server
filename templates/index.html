@@ -13,6 +13,7 @@
       <span id="device-status" class="hidden sm:inline-flex items-center text-xs text-slate-500"></span>
     </div>
     <div class="hidden sm:flex items-center gap-3 text-sm text-slate-600">
+      <a href="/help" class="text-indigo-600 hover:underline">Справочник</a>
       <span>{{ user }}</span>
       <form method="post" action="/logout" class="inline">
         <button type="submit" class="text-indigo-600 hover:underline">Выйти</button>
@@ -29,9 +30,12 @@
   <div id="mobile-menu" class="hidden sm:hidden bg-white border-b border-slate-200 px-4 py-2 text-sm">
     <div class="flex items-center justify-between">
       <span>{{ user }}</span>
-      <form method="post" action="/logout">
-        <button type="submit" class="text-indigo-600">Выйти</button>
-      </form>
+      <div class="flex items-center gap-4">
+        <a href="/help" class="text-indigo-600">Справочник</a>
+        <form method="post" action="/logout">
+          <button type="submit" class="text-indigo-600">Выйти</button>
+        </form>
+      </div>
     </div>
   </div>
 

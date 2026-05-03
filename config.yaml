@@ -1,11 +1,11 @@
 server:
   host: "0.0.0.0"
-  port: 8000
+  port: 9000
 
 auth:
   username: "admin"
-  password_hash: "REPLACE_ME_RUN_generate_password.py"
-  session_secret: "REPLACE_ME_LONG_RANDOM_STRING"
+  password_hash: "$2b$12$RymyVmw33xpqiyczkKyJmONNvNW4FAOmTy8PXEivd/hWnavyiWjPS"
+  session_secret: "TMnYAhSwyS3p-KjZxafSOh8Wkg7EQLE6_kKOoIJC7_cGSP8KYKQU3072j-ZTBnak"
   session_lifetime_hours: 24
 
 storage:
