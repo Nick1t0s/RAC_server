@@ -132,9 +132,9 @@
       const ourl = cmd.output_file.url;
       const isImg = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(cmd.output_file.filename);
       if (isImg) {
-        outFile = `<div class="mt-1 flex items-start gap-2">` +
+        outFile = `<div class="mt-1 flex flex-wrap items-start gap-2">` +
           `<a href="${ourl}" target="_blank" rel="noopener" title="${ofn}">` +
-            `<img src="${ourl}" alt="${ofn}" class="cmd-thumb rounded border border-slate-200 max-h-24 max-w-[12rem] object-contain bg-slate-50">` +
+            `<img src="${ourl}" alt="${ofn}" class="cmd-thumb rounded border border-slate-200 max-h-48 max-w-[16rem] sm:max-h-72 sm:max-w-[36rem] object-contain bg-slate-50">` +
           `</a>` +
           `<a href="${ourl}" target="_blank" rel="noopener" class="text-xs text-indigo-600 hover:underline self-end">⬇ ${ofn}</a>` +
           `</div>`;
