@@ -4,8 +4,8 @@ server:
 
 auth:
   username: "admin"
-  password_hash: "$2b$12$RymyVmw33xpqiyczkKyJmONNvNW4FAOmTy8PXEivd/hWnavyiWjPS"
-  session_secret: "TMnYAhSwyS3p-KjZxafSOh8Wkg7EQLE6_kKOoIJC7_cGSP8KYKQU3072j-ZTBnak"
+  password_hash: "replace to generated hash "
+  session_secret: "random string"
   session_lifetime_hours: 24
 
 storage:
